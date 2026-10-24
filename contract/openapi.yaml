@@ -1,0 +1,877 @@
+openapi: 3.0.3
+info:
+  title: FairHold+ API
+  version: 1.0.0
+  description: >-
+    Single source of truth for the FairHold+ frontend/backend contract.
+    Rules that cannot be expressed in this file live in CONTRACT.md.
+    Both members read this file; neither changes it alone.
+servers:
+  - url: http://localhost:8000/api/v1
+    description: Local backend
+tags:
+  - name: System
+  - name: Cases
+  - name: Events
+  - name: Evidence
+  - name: Status
+  - name: Outputs
+  - name: Demo
+
+paths:
+  /health:
+    get:
+      tags: [System]
+      operationId: getHealth
+      summary: Liveness check
+      responses:
+        '200':
+          description: Backend is up
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [status]
+                properties:
+                  status:
+                    type: string
+                    enum: [ok]
+
+  /cases:
+    get:
+      tags: [Cases]
+      operationId: listCases
+      summary: List all cases, newest first (by created_at)
+      responses:
+        '200':
+          description: All cases
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CaseList'
+    post:
+      tags: [Cases]
+      operationId: createCase
+      summary: Create a case from the intake wizard
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CaseCreate'
+      responses:
+        '201':
+          description: Case created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Case'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+
+  /cases/{caseId}:
+    parameters:
+      - $ref: '#/components/parameters/CaseId'
+    get:
+      tags: [Cases]
+      operationId: getCase
+      summary: Get one case
+      responses:
+        '200':
+          description: The case
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Case'
+        '404':
+          $ref: '#/components/responses/NotFound'
+    patch:
+      tags: [Cases]
+      operationId: updateCase
+      summary: Edit intake details. Only the fields sent are changed.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CaseUpdate'
+      responses:
+        '200':
+          description: Updated case
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Case'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+
+  /cases/{caseId}/events:
+    parameters:
+      - $ref: '#/components/parameters/CaseId'
+    get:
+      tags: [Events]
+      operationId: listEvents
+      summary: Timeline of a case, oldest first (by occurred_at, then created_at)
+      responses:
+        '200':
+          description: All events of the case
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EventList'
+        '404':
+          $ref: '#/components/responses/NotFound'
+    post:
+      tags: [Events]
+      operationId: createEvent
+      summary: Add a timeline event
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/EventCreate'
+      responses:
+        '201':
+          description: Event created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Event'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+
+  /cases/{caseId}/events/{eventId}:
+    parameters:
+      - $ref: '#/components/parameters/CaseId'
+      - $ref: '#/components/parameters/EventId'
+    delete:
+      tags: [Events]
+      operationId: deleteEvent
+      summary: Delete a timeline event
+      responses:
+        '204':
+          description: Deleted
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /cases/{caseId}/attachments:
+    parameters:
+      - $ref: '#/components/parameters/CaseId'
+    post:
+      tags: [Evidence]
+      operationId: uploadAttachment
+      summary: Upload a file (screenshot, PDF, text) without parsing it
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required: [file]
+              properties:
+                file:
+                  type: string
+                  format: binary
+      responses:
+        '201':
+          description: Attachment stored
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Attachment'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '413':
+          $ref: '#/components/responses/FileTooLarge'
+        '415':
+          $ref: '#/components/responses/UnsupportedFile'
+
+  /cases/{caseId}/evidence/parse:
+    parameters:
+      - $ref: '#/components/parameters/CaseId'
+    post:
+      tags: [Evidence]
+      operationId: parseEvidence
+      summary: Extract a draft timeline event from a file or pasted text
+      description: >-
+        Never saves an event. If a file is sent, it is stored as an attachment
+        and its id is returned in the draft. Send at least one of file or text.
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              properties:
+                file:
+                  type: string
+                  format: binary
+                text:
+                  type: string
+                  maxLength: 5000
+      responses:
+        '200':
+          description: Draft for the user to review and edit
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EvidenceDraft'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '413':
+          $ref: '#/components/responses/FileTooLarge'
+        '415':
+          $ref: '#/components/responses/UnsupportedFile'
+        '422':
+          description: >-
+            VALIDATION_ERROR (neither file nor text sent) or PARSE_FAILED
+            (nothing could be extracted). On PARSE_FAILED the frontend falls
+            back to the manual event form.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /cases/{caseId}/status:
+    parameters:
+      - $ref: '#/components/parameters/CaseId'
+    get:
+      tags: [Status]
+      operationId: getCaseStatus
+      summary: Deadline and escalation status. Computed only by the backend.
+      responses:
+        '200':
+          description: Current status
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CaseStatusSummary'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /cases/{caseId}/letter:
+    parameters:
+      - $ref: '#/components/parameters/CaseId'
+    post:
+      tags: [Outputs]
+      operationId: generateLetter
+      summary: Generate a request letter to the bank (not saved)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LetterRequest'
+      responses:
+        '200':
+          description: Letter text
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Letter'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+
+  /cases/{caseId}/export:
+    parameters:
+      - $ref: '#/components/parameters/CaseId'
+    get:
+      tags: [Outputs]
+      operationId: exportCase
+      summary: Download the chronology as a PDF
+      responses:
+        '200':
+          description: PDF chronology
+          headers:
+            Content-Disposition:
+              description: attachment; filename="fairhold-case-{caseId}.pdf"
+              schema:
+                type: string
+          content:
+            application/pdf:
+              schema:
+                type: string
+                format: binary
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /demo/seed:
+    post:
+      tags: [Demo]
+      operationId: seedDemoCase
+      summary: Create the scripted demo case with realistic events
+      responses:
+        '201':
+          description: Demo case created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Case'
+
+  /demo/reset:
+    post:
+      tags: [Demo]
+      operationId: resetDemo
+      summary: Delete all cases, events and attachments
+      responses:
+        '204':
+          description: Everything deleted
+
+components:
+  parameters:
+    CaseId:
+      name: caseId
+      in: path
+      required: true
+      schema:
+        type: string
+    EventId:
+      name: eventId
+      in: path
+      required: true
+      schema:
+        type: string
+
+  responses:
+    NotFound:
+      description: Resource does not exist
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          example:
+            error:
+              code: NOT_FOUND
+              message: Case not found
+              details: []
+    ValidationError:
+      description: Request body or parameters failed validation
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          example:
+            error:
+              code: VALIDATION_ERROR
+              message: Request validation failed
+              details:
+                - field: freeze_date
+                  issue: must be a date in YYYY-MM-DD format
+    UnsupportedFile:
+      description: File type not allowed (use png, jpeg, pdf or plain text)
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+    FileTooLarge:
+      description: File larger than 10 MB
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+
+  schemas:
+    # ---------- Enums (values are frozen; see CONTRACT.md) ----------
+    AccountType:
+      type: string
+      enum: [savings, current, salary, joint, other]
+    FreezeType:
+      type: string
+      enum: [freeze, debit_hold, lien, partial_hold, unknown]
+    Urgency:
+      type: string
+      enum: [rent, medical, bills, education, other]
+    EventType:
+      type: string
+      enum: [call, sms, email, branch_visit, request_sent, bank_response, grievance_filed, ombudsman_filed, note]
+    Direction:
+      type: string
+      description: outbound is customer to bank, inbound is bank to customer, internal is the customer's own note
+      enum: [outbound, inbound, internal]
+    EventSource:
+      type: string
+      enum: [manual, parsed]
+    CaseState:
+      type: string
+      enum: [awaiting_first_contact, within_window, window_expired, resolved]
+    ActionCode:
+      type: string
+      enum: [make_first_request, wait_for_response, follow_up_with_bank, log_reference_number, escalate_to_ombudsman, consult_legal_aid]
+    BlockerCode:
+      type: string
+      enum: [no_first_contact, window_not_elapsed, no_reference_number]
+    LetterPurpose:
+      type: string
+      enum: [initial_request, follow_up]
+
+    # ---------- Cases ----------
+    CaseCreate:
+      type: object
+      required: [bank_name, account_type, freeze_type, freeze_date]
+      properties:
+        bank_name:
+          type: string
+          minLength: 1
+          maxLength: 120
+        account_type:
+          $ref: '#/components/schemas/AccountType'
+        account_last4:
+          type: string
+          nullable: true
+          pattern: '^[0-9]{4}$'
+        freeze_type:
+          $ref: '#/components/schemas/FreezeType'
+        freeze_date:
+          type: string
+          format: date
+          description: Calendar date in YYYY-MM-DD
+        amount_held_minor:
+          type: integer
+          nullable: true
+          minimum: 0
+          description: Amount in paise (integer). 45000 rupees is 4500000.
+        urgency:
+          type: array
+          items:
+            $ref: '#/components/schemas/Urgency'
+          default: []
+        reason_given:
+          type: string
+          nullable: true
+          maxLength: 1000
+          description: What the bank told the customer, if anything
+    CaseUpdate:
+      type: object
+      description: Same fields as CaseCreate, all optional.
+      properties:
+        bank_name:
+          type: string
+          minLength: 1
+          maxLength: 120
+        account_type:
+          $ref: '#/components/schemas/AccountType'
+        account_last4:
+          type: string
+          nullable: true
+          pattern: '^[0-9]{4}$'
+        freeze_type:
+          $ref: '#/components/schemas/FreezeType'
+        freeze_date:
+          type: string
+          format: date
+        amount_held_minor:
+          type: integer
+          nullable: true
+          minimum: 0
+        urgency:
+          type: array
+          items:
+            $ref: '#/components/schemas/Urgency'
+        reason_given:
+          type: string
+          nullable: true
+          maxLength: 1000
+    Case:
+      type: object
+      required:
+        - id
+        - bank_name
+        - account_type
+        - account_last4
+        - freeze_type
+        - freeze_date
+        - amount_held_minor
+        - currency
+        - urgency
+        - reason_given
+        - state
+        - event_count
+        - last_event_at
+        - created_at
+        - updated_at
+      properties:
+        id:
+          type: string
+        bank_name:
+          type: string
+        account_type:
+          $ref: '#/components/schemas/AccountType'
+        account_last4:
+          type: string
+          nullable: true
+        freeze_type:
+          $ref: '#/components/schemas/FreezeType'
+        freeze_date:
+          type: string
+          format: date
+        amount_held_minor:
+          type: integer
+          nullable: true
+        currency:
+          type: string
+          enum: [INR]
+        urgency:
+          type: array
+          items:
+            $ref: '#/components/schemas/Urgency'
+        reason_given:
+          type: string
+          nullable: true
+        state:
+          $ref: '#/components/schemas/CaseState'
+        event_count:
+          type: integer
+          minimum: 0
+        last_event_at:
+          type: string
+          format: date-time
+          nullable: true
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+      example:
+        id: 3f2b8c1e-9a4d-4c7e-8f10-2b6d5e7a9c11
+        bank_name: Example National Bank
+        account_type: savings
+        account_last4: '1234'
+        freeze_type: debit_hold
+        freeze_date: '2026-10-01'
+        amount_held_minor: 4500000
+        currency: INR
+        urgency: [rent, medical]
+        reason_given: Account under review
+        state: within_window
+        event_count: 3
+        last_event_at: '2026-10-09T10:30:00Z'
+        created_at: '2026-10-02T08:00:00Z'
+        updated_at: '2026-10-09T10:30:00Z'
+    CaseList:
+      type: object
+      required: [items]
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/Case'
+
+    # ---------- Events ----------
+    EventCreate:
+      type: object
+      required: [type, direction, occurred_at, summary]
+      properties:
+        type:
+          $ref: '#/components/schemas/EventType'
+        direction:
+          $ref: '#/components/schemas/Direction'
+        occurred_at:
+          type: string
+          format: date-time
+          description: ISO 8601 with Z or an offset. Never a bare local time.
+        summary:
+          type: string
+          minLength: 1
+          maxLength: 1000
+        reference_number:
+          type: string
+          nullable: true
+          maxLength: 100
+        bank_statement:
+          type: string
+          nullable: true
+          maxLength: 2000
+          description: What the bank said, as close to its own words as possible
+        is_resolution:
+          type: boolean
+          default: false
+          description: True only if the bank documented a resolution (release, decision, or written timeline)
+        attachment_ids:
+          type: array
+          items:
+            type: string
+          default: []
+        source:
+          $ref: '#/components/schemas/EventSource'
+    Event:
+      type: object
+      required:
+        - id
+        - case_id
+        - type
+        - direction
+        - occurred_at
+        - summary
+        - reference_number
+        - bank_statement
+        - is_resolution
+        - attachment_ids
+        - source
+        - created_at
+      properties:
+        id:
+          type: string
+        case_id:
+          type: string
+        type:
+          $ref: '#/components/schemas/EventType'
+        direction:
+          $ref: '#/components/schemas/Direction'
+        occurred_at:
+          type: string
+          format: date-time
+        summary:
+          type: string
+        reference_number:
+          type: string
+          nullable: true
+        bank_statement:
+          type: string
+          nullable: true
+        is_resolution:
+          type: boolean
+        attachment_ids:
+          type: array
+          items:
+            type: string
+        source:
+          $ref: '#/components/schemas/EventSource'
+        created_at:
+          type: string
+          format: date-time
+      example:
+        id: 9c1d7a52-6b0e-4e43-a5d2-0f3e8b7c4a10
+        case_id: 3f2b8c1e-9a4d-4c7e-8f10-2b6d5e7a9c11
+        type: call
+        direction: outbound
+        occurred_at: '2026-10-03T05:30:00Z'
+        summary: Called the helpline to ask why the account is on hold
+        reference_number: CC-884213
+        bank_statement: Your account is under review. No timeline can be given.
+        is_resolution: false
+        attachment_ids: []
+        source: manual
+        created_at: '2026-10-03T05:41:00Z'
+    EventList:
+      type: object
+      required: [items]
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/Event'
+
+    # ---------- Evidence ----------
+    Attachment:
+      type: object
+      required: [id, case_id, filename, mime_type, size_bytes, url, created_at]
+      properties:
+        id:
+          type: string
+        case_id:
+          type: string
+        filename:
+          type: string
+        mime_type:
+          type: string
+          enum: [image/png, image/jpeg, application/pdf, text/plain]
+        size_bytes:
+          type: integer
+          minimum: 0
+        url:
+          type: string
+          description: Path or absolute URL the frontend can use directly in img or a link
+        created_at:
+          type: string
+          format: date-time
+    EvidenceDraft:
+      type: object
+      required: [suggested_event, confidence, raw_text, attachment_id, warnings]
+      properties:
+        suggested_event:
+          $ref: '#/components/schemas/EventCreate'
+        confidence:
+          type: object
+          description: Per-field confidence from 0 to 1. Keys are EventCreate field names.
+          additionalProperties:
+            type: number
+            minimum: 0
+            maximum: 1
+        raw_text:
+          type: string
+          description: Text extracted from the file, or the pasted text
+        attachment_id:
+          type: string
+          nullable: true
+          description: Id of the stored file, null when only text was sent
+        warnings:
+          type: array
+          items:
+            type: string
+      example:
+        suggested_event:
+          type: bank_response
+          direction: inbound
+          occurred_at: '2026-10-09T10:30:00Z'
+          summary: SMS from bank about the account review
+          reference_number: SR-2026-55102
+          bank_statement: Your request SR-2026-55102 is under review. We will update you shortly.
+          is_resolution: false
+          attachment_ids: [a7e5c2d4-31f8-4a9b-9d60-5c1b2e8f7a33]
+          source: parsed
+        confidence:
+          occurred_at: 0.95
+          reference_number: 0.9
+          bank_statement: 0.85
+        raw_text: Your request SR-2026-55102 is under review. We will update you shortly.
+        attachment_id: a7e5c2d4-31f8-4a9b-9d60-5c1b2e8f7a33
+        warnings: []
+
+    # ---------- Status ----------
+    ActionItem:
+      type: object
+      required: [code, label]
+      properties:
+        code:
+          $ref: '#/components/schemas/ActionCode'
+        label:
+          type: string
+          description: Plain-language text ready to display
+    Blocker:
+      type: object
+      required: [code, label]
+      properties:
+        code:
+          $ref: '#/components/schemas/BlockerCode'
+        label:
+          type: string
+    CaseStatusSummary:
+      type: object
+      required:
+        - case_id
+        - state
+        - as_of
+        - days_since_freeze
+        - first_contact_at
+        - window_days
+        - window_deadline
+        - days_remaining
+        - window_basis
+        - escalation_ready
+        - escalation_blockers
+        - next_steps
+        - disclaimer
+      properties:
+        case_id:
+          type: string
+        state:
+          $ref: '#/components/schemas/CaseState'
+        as_of:
+          type: string
+          format: date-time
+        days_since_freeze:
+          type: integer
+          minimum: 0
+        first_contact_at:
+          type: string
+          format: date-time
+          nullable: true
+        window_days:
+          type: integer
+          nullable: true
+          description: Null until the first contact is logged
+        window_deadline:
+          type: string
+          format: date
+          nullable: true
+        days_remaining:
+          type: integer
+          nullable: true
+          description: Negative once the window has expired
+        window_basis:
+          type: string
+          description: Where the window length comes from, shown under the countdown
+        escalation_ready:
+          type: boolean
+        escalation_blockers:
+          type: array
+          items:
+            $ref: '#/components/schemas/Blocker'
+        next_steps:
+          type: array
+          items:
+            $ref: '#/components/schemas/ActionItem'
+        disclaimer:
+          type: string
+          description: Fixed not-legal-advice text to show on the status card
+      example:
+        case_id: 3f2b8c1e-9a4d-4c7e-8f10-2b6d5e7a9c11
+        state: within_window
+        as_of: '2026-10-23T09:00:00Z'
+        days_since_freeze: 22
+        first_contact_at: '2026-10-03T05:30:00Z'
+        window_days: 30
+        window_deadline: '2026-11-02'
+        days_remaining: 10
+        window_basis: Configured response window, to be verified against the current RBI scheme
+        escalation_ready: false
+        escalation_blockers:
+          - code: window_not_elapsed
+            label: The bank's response window has not ended yet
+        next_steps:
+          - code: wait_for_response
+            label: Wait for the bank's written response and log it when it arrives
+        disclaimer: FairHold+ organizes your records. It is not legal advice.
+
+    # ---------- Letter ----------
+    LetterRequest:
+      type: object
+      required: [purpose]
+      properties:
+        purpose:
+          $ref: '#/components/schemas/LetterPurpose'
+    Letter:
+      type: object
+      required: [subject, body, generated_at]
+      properties:
+        subject:
+          type: string
+        body:
+          type: string
+          description: Plain text. Lines are separated by \n.
+        generated_at:
+          type: string
+          format: date-time
+
+    # ---------- Errors ----------
+    Error:
+      type: object
+      required: [error]
+      properties:
+        error:
+          type: object
+          required: [code, message, details]
+          properties:
+            code:
+              type: string
+              enum: [VALIDATION_ERROR, NOT_FOUND, PARSE_FAILED, UNSUPPORTED_FILE, FILE_TOO_LARGE, INTERNAL_ERROR]
+            message:
+              type: string
+            details:
+              type: array
+              items:
+                type: object
+                required: [field, issue]
+                properties:
+                  field:
+                    type: string
+                  issue:
+                    type: string

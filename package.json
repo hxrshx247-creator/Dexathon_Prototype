@@ -1,0 +1,29 @@
+{
+  "name": "fairhold-plus",
+  "private": true,
+  "version": "1.0.0",
+  "type": "module",
+  "scripts": {
+    "api:types": "openapi-typescript contract/openapi.yaml -o src/api/schema.d.ts",
+    "predev": "npm run api:types",
+    "dev": "vite --port 5173",
+    "prebuild": "npm run api:types",
+    "build": "tsc --noEmit && vite build",
+    "typecheck": "tsc --noEmit",
+    "mock": "node mock/server.mjs"
+  },
+  "dependencies": {
+    "lucide-react": "^0.468.0",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
+    "react-router-dom": "^6.28.0"
+  },
+  "devDependencies": {
+    "@types/react": "^18.3.12",
+    "@types/react-dom": "^18.3.1",
+    "@vitejs/plugin-react": "^4.3.4",
+    "openapi-typescript": "^7.4.4",
+    "typescript": "^5.6.3",
+    "vite": "^5.4.11"
+  }
+}

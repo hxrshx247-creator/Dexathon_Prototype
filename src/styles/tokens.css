@@ -1,0 +1,83 @@
+/*
+  FairHold+ design tokens.
+  One ground, one ink, one accent. Surfaces are separated by a step in tone.
+  Whole flat fields of colour carry status (see .banner). No gradients, no glows.
+*/
+
+/* Self-hosted so the demo looks identical offline. Inter for the interface, Inter Display for
+   big numerals and headings, Lora as the "record voice": the bank's own words and the packet. */
+@font-face { font-family: "Inter"; font-weight: 400; font-style: normal; font-display: swap; src: url("/fonts/inter-400.woff") format("woff"); }
+@font-face { font-family: "Inter"; font-weight: 600; font-style: normal; font-display: swap; src: url("/fonts/inter-600.woff") format("woff"); }
+@font-face { font-family: "Inter"; font-weight: 700; font-style: normal; font-display: swap; src: url("/fonts/inter-700.woff") format("woff"); }
+@font-face { font-family: "Inter Display"; font-weight: 600; font-style: normal; font-display: swap; src: url("/fonts/inter-display-600.woff") format("woff"); }
+@font-face { font-family: "Inter Display"; font-weight: 700; font-style: normal; font-display: swap; src: url("/fonts/inter-display-700.woff") format("woff"); }
+@font-face { font-family: "Lora"; font-weight: 400 700; font-style: normal; font-display: swap; src: url("/fonts/lora-var.woff") format("woff"); }
+
+:root {
+  /* Surfaces */
+  --ground: #f1f3f2;
+  --surface: #ffffff;
+  --surface-2: #e6eae9; /* a tone step down: wells, hover, day headings */
+  --surface-3: #d9dfdd;
+  --line: #d3dad8; /* quiet separators inside the ledger, tables and form fields only */
+
+  /* Ink (on --ground: ink 16:1, ink-2 8:1, ink-3 5.4:1) */
+  --ink: #0b1824;
+  --ink-2: #364552;
+  --ink-3: #566470;
+
+  /* Accent: the main action and selection, nothing else */
+  --accent: #0a6a5c;
+  --accent-hover: #07554a;
+  --accent-on: #ffffff;
+  --accent-soft: #d4ebe6;
+  --accent-wash: #e9f4f1; /* the bank's own entries in the ledger */
+  --accent-bright: #5fd6bc; /* only on ink: the wordmark and the dark banner */
+
+  /* Status fields. Each is a flat field and a text colour that clears 7:1 on it. */
+  --neutral-bg: #e6eae9;
+  --neutral-fg: #1f2d3a;
+  --info-bg: #dbe8f3;
+  --info-fg: #0f3552;
+  --success-bg: #d3ece0;
+  --success-fg: #0c4a30;
+  --warning-bg: #fbe5ba;
+  --warning-fg: #5a3000;
+  --danger-bg: #f6d8d4;
+  --danger-fg: #7d1a13;
+
+  --focus: #0a58ca;
+
+  /* Type */
+  --font: "Inter", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  --font-display: "Inter Display", "Inter", system-ui, sans-serif;
+  --font-record: "Lora", Charter, Georgia, serif;
+  --t-display: clamp(6.5rem, 15vw, 11.5rem);
+  --t-h1: clamp(2rem, 3.6vw, 2.875rem);
+  --t-h2: 1.25rem;
+  --t-body: 1rem;
+  --t-small: 0.875rem;
+
+  /* Space */
+  --s-1: 4px;
+  --s-2: 8px;
+  --s-3: 12px;
+  --s-4: 16px;
+  --s-5: 24px;
+  --s-6: 32px;
+  --s-7: 48px;
+  --s-8: 72px;
+  --s-9: 120px;
+  --gutter: clamp(16px, 4vw, 40px);
+  --page: 1200px;
+  --header-h: 64px;
+
+  /* Shape: square corners everywhere, decided once */
+  --r: 2px;
+
+  /* Motion */
+  --ease: cubic-bezier(0.2, 0.7, 0.2, 1);
+  --fast: 140ms;
+  --med: 280ms;
+  --slow: 520ms;
+}
