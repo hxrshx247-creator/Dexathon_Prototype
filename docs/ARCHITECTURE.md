@@ -2,7 +2,7 @@
 
 ```mermaid
 flowchart TD
-    User[Single demo user] --> UI[Member A: React / Vite]
+    User[Single demo user] --> UI[React / Vite]
     UI -->|JSON + multipart, /api/v1| API[FastAPI / contract validation]
     Contract[Canonical OpenAPI + behavior contract] --> API
     Contract --> Types[Generated TypeScript types]

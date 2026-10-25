@@ -77,7 +77,7 @@ export function dayKey(iso: string): string {
 }
 
 // ---------- <input type="datetime-local"> ----------
-// The input has no timezone. Convert before sending, as CONTRACT.md requires.
+// The input has no timezone. Convert to an ISO timestamp before sending.
 
 /** Value from a datetime-local input -> ISO string with Z, ready for occurred_at. */
 export function localInputToIso(value: string): string {

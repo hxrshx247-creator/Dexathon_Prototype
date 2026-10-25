@@ -1,24 +1,12 @@
 # FairHold+
 
-**One clear record of a frozen bank account.**
+**Turn scattered bank messages into one clear account-hold record.**
 
-FairHold+ helps people collect bank communications, track a configured response window, and prepare a chronology they can take to a bank, ombudsman or legal aid clinic. It turns screenshots and pasted messages into editable timeline drafts, keeping dates, reference numbers and bank statements together.
+FairHold+ helps people document a frozen bank account, track a response window, and prepare a chronology for the bank or ombudsman. Screenshot OCR extracts dates, reference numbers, INR amounts and bank wording into an editable draft. The user reviews the draft before anything enters the timeline.
 
-This is a single-user hackathon prototype. **FairHold+ organizes records; it is not legal advice.** Escalation readiness reflects a simplified, configurable policy and does not establish legal eligibility.
+## Run with Docker
 
-## Features
-
-- Intake for bank, account type, hold details, amount and essential expenses.
-- Dashboard with backend-computed status, deadlines and next steps.
-- Chronological record of calls, messages, emails, visits and uploaded evidence.
-- Local screenshot OCR and SMS extraction with editable drafts and review warnings.
-- Initial-request and follow-up letter templates.
-- Downloadable chronology PDF with reference numbers and an evidence manifest.
-- Fictional demo case and persistent SQLite storage.
-
-## Quick start with Docker
-
-Requires Docker Desktop with its Linux engine running.
+Requires Docker Desktop with the Linux engine running.
 
 ```sh
 git clone https://github.com/hxrshx247-creator/Dexathon_Prototype.git
@@ -26,36 +14,36 @@ cd Dexathon_Prototype
 docker compose up --build -d --wait
 ```
 
-Open **[http://localhost:8000](http://localhost:8000)** and choose **See a demo case**. The demo contains fictional records. Loading or resetting the demo clears all records in that instance.
+Open **[localhost:8000](http://localhost:8000)**. No API keys or extra configuration are needed. The first build downloads dependencies and bundled OCR models.
 
-```sh
-docker compose logs -f fairhold
-docker compose down
+To stop: `docker compose down`. Records survive in a named volume; `docker compose down -v` deletes them.
+
+## Try the demo
+
+1. Select **See a demo case** to load fictional bank contacts and reference numbers. This resets the demo instance's existing records.
+2. Select **Add evidence** and upload a screenshot or paste a bank message. Review the extracted details, then save the event.
+3. Open the escalation packet and download the chronology PDF.
+
+Example message to paste:
+
+```text
+Date: 23/10/2026
+Reference: SR-2026-55102
+INR 45,000.00 is on hold. Your account is under review.
+We will update you shortly.
 ```
 
-Cases and original attachment bytes persist in the `fairhold-data` Docker volume. Stopping the service retains them; `docker compose down -v` deletes them. The service binds to localhost and runs as a non-root user.
+The app also provides an intake wizard, status dashboard, manual timeline entries, evidence uploads, and initial-request/follow-up letters. A fictional screenshot and sample PDF can be generated with `python scripts/make_demo_artifacts.py` after installing the Python dependencies below; generated files go to `output/demo/`.
 
-## Local development
+## Develop locally
 
-Requires Node.js 20+ and Python 3.11+.
+Requires **Node.js 20+** and **Python 3.11+**. Stop the Docker service first to free port 8000.
 
 ```sh
 python -m venv .venv
 ```
 
-Activate the virtual environment:
-
-```powershell
-# Windows PowerShell
-.venv/Scripts/Activate.ps1
-```
-
-```sh
-# macOS / Linux
-source .venv/bin/activate
-```
-
-Then install dependencies and start the backend:
+Activate with `.venv/Scripts/Activate.ps1` on Windows PowerShell, or `source .venv/bin/activate` on macOS/Linux. Then:
 
 ```sh
 python -m pip install -r backend/requirements-dev.txt
@@ -63,74 +51,43 @@ npm ci
 npm run backend
 ```
 
-In a second terminal, start the frontend:
+In a second terminal, run `npm run dev` and open [localhost:5173](http://localhost:5173).
 
-```sh
-npm run dev
-```
+Development uses `http://localhost:8000/api/v1`; production uses same-origin `/api/v1`. Set `VITE_API_BASE` in a local `.env` to override it. Backend environment options are listed in [backend/.env.example](backend/.env.example).
 
-Open [http://localhost:5173](http://localhost:5173). The backend listens on port 8000. Avoid running it alongside the Docker service on the same port.
+## Architecture
 
-The development API defaults to `http://localhost:8000/api/v1`. To use another backend, put `VITE_API_BASE=https://your-host/api/v1` in a local `.env` file and restart Vite. Production builds use same-origin `/api/v1` by default. Backend environment examples are in [backend/.env.example](backend/.env.example).
-
-## Repository layout
+**React + TypeScript + Vite** provide the interface. **FastAPI + SQLite** persist cases, timeline events and original attachments. **RapidOCR/ONNX** processes screenshots locally, and **ReportLab** generates the chronology PDF. No external inference service is used.
 
 ```text
-backend/        FastAPI routes, SQLite storage, OCR, rules, letters and PDF export
-  tests/        API contract, validation, OCR, rules and persistence tests
-contract/       Shared OpenAPI specification and integration behavior
-docs/           Architecture, backend details, demo handoff and verification
-mock/           Optional in-memory server for frontend-only development
-public/         Bundled frontend fonts
-scripts/        Demo artifact generator and live deployment smoke test
-src/            React interface and generated API types
-Dockerfile      Frontend build and Python runtime image
-compose.yaml    Local deployment with a persistent data volume
+src/                  Frontend and typed API client
+backend/              API, OCR, rules, storage, letters and PDF generation
+backend/tests/        Contract, OCR, deadline and persistence tests
+contract/             OpenAPI schema and API behavior
+public/               Bundled frontend fonts
+scripts/              Fictional demo artifact generator
+docs/ARCHITECTURE.md   System diagram and data model
+Dockerfile            Frontend build and backend runtime
+compose.yaml          Local service and persistent data volume
 ```
 
-Dependencies, builds, databases, uploaded evidence, secrets and generated demo output are excluded from Git. `package-lock.json` and pinned backend requirements are included for installation.
+[Architecture and data model](docs/ARCHITECTURE.md) · [API schema](contract/openapi.yaml) · [API behavior](contract/CONTRACT.md)
 
-## Tests and demo inputs
+## Validate
 
 With the Python environment active:
 
 ```sh
 python -m pytest backend/tests -q
 npm run build
-python scripts/make_demo_artifacts.py
 ```
 
-The generator creates a fictional SMS, screenshot and sample PDF in ignored `output/demo/`, without changing the running database. These inputs can be uploaded through the evidence flow.
+**31 backend tests pass on Windows and Linux.** Docker startup, screenshot OCR, letter generation, PDF export and persistence after a service restart have also been verified.
 
-To test a running Docker deployment:
+API explorer: [localhost:8000/api/docs](http://localhost:8000/api/docs). Health check: `/api/v1/health`. Response-window settings: [backend/rules.json](backend/rules.json).
 
-```sh
-python scripts/verify_deployment.py
-docker compose restart fairhold
-python scripts/verify_deployment.py
-```
+## Prototype scope
 
-The first smoke-test run adds a fictional case and evidence; later runs check the same records using ignored `tmp/docker-verification.json`. It never resets other cases.
+FairHold+ organizes records and is **not legal advice**. The default 30-day window is a configurable demonstration policy; readiness is not a legal eligibility decision, and full verification of applicable RBI rules remains pending. OCR works best with clear English screenshots; image-only PDFs require a screenshot of the relevant page. Amount extraction does not overwrite the case's recorded amount. Uploaded originals are stored separately from the exported PDF.
 
-**Verified:** 31 backend tests pass on Windows and inside Linux; frontend builds, Docker health checks, live OCR, letters, PDF export and persistence across a container restart pass. See [verification notes](docs/VERIFICATION.md) for details and remaining limits.
-
-## API and configuration
-
-- Base path: `/api/v1`
-- Health: `GET /api/v1/health`
-- Interactive API docs: [http://localhost:8000/api/docs](http://localhost:8000/api/docs)
-- Shared specification: [contract/openapi.yaml](contract/openapi.yaml)
-- Deadline policy: [backend/rules.json](backend/rules.json)
-- Backend settings: `DATA_DIR`, `RULES_PATH`, `FRONTEND_DIST`, `CORS_ORIGINS`
-
-Money is stored as integer paise, timestamps use UTC, and deadline dates use the configured India timezone. The backend owns status calculations. Parsing returns a draft and never saves an event until the user confirms it.
-
-## Documentation and limitations
-
-- [Architecture and data model](docs/ARCHITECTURE.md)
-- [Backend implementation, extraction limits and policy sources](docs/BACKEND.md)
-- [Frontend handoff and three-minute demo](docs/HANDOFF.md)
-- [Verification results](docs/VERIFICATION.md)
-- [Integration contract](contract/CONTRACT.md)
-
-OCR currently targets clear English screenshots. Image-only PDFs require a screenshot of the relevant page. No cloud AI key is needed. Legal verification of the applicable RBI rules remains pending. This unauthenticated local prototype needs identity, per-user access controls and other production safeguards before public use with real banking evidence.
+This is a single-user, unauthenticated local prototype. Use fictional data for the demo. Public use with real banking evidence requires authentication and per-user access controls. Local databases, secrets, dependency folders and generated output are excluded from version control.

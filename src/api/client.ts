@@ -74,7 +74,7 @@ async function toApiError(res: Response): Promise<ApiError> {
   return new ApiError(res.status, fallbackCode(res.status), res.statusText);
 }
 
-/** Plain-language message for each error, following CONTRACT.md section 6. */
+/** Plain-language message for each API error. */
 export function friendlyError(e: unknown): string {
   if (!(e instanceof ApiError)) return "Something went wrong. Please try again.";
   switch (e.code) {
@@ -191,7 +191,7 @@ export async function refreshStatusAndEvents(caseId: string) {
 
 /**
  * Attachment.url may be a path or an absolute URL. Paths are resolved against the
- * API origin. Confirm with Member B whether paths start at the origin or at /api/v1.
+ * API origin. Server-generated attachment paths start at the origin.
  */
 export function attachmentUrl(url: string): string {
   if (/^https?:\/\//i.test(url)) return url;

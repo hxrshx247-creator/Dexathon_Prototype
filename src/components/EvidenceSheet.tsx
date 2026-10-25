@@ -137,7 +137,7 @@ export function EvidenceSheet({
       setMessage(friendlyError(e));
       if (e instanceof ApiError && e.code === "PARSE_FAILED") {
         setParsed(null);
-        setStage("review"); // fall back to the manual form, as CONTRACT.md section 6 requires
+        setStage("review"); // Let the user enter details manually when parsing fails.
       }
     } finally {
       setBusy(false);

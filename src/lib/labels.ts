@@ -86,7 +86,7 @@ export const BLOCKER_ICON: Record<string, string> = {
 export const iconFor = (map: Record<string, string>, code: string): string =>
   map[code] ?? "Circle";
 
-// ---------- Direction is derived from type (CONTRACT.md section 4) ----------
+// ---------- Direction is derived from event type ----------
 // The add-event form never asks the user for direction. The backend rejects any other pairing.
 // An inbound SMS or email from the bank is logged as bank_response, not sms or email.
 

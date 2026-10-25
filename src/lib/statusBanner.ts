@@ -1,5 +1,5 @@
 // Banner copy built only from fields GET /cases/{id}/status already returns.
-// No deadline, state or day-count logic lives here (CONTRACT.md section 3).
+// Deadlines, state and day counts are computed by the backend.
 import type { CaseStatus, LetterPurpose } from "../api/client";
 import { formatDateOnly } from "./format";
 import type { Tone } from "./labels";
