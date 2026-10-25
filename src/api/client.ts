@@ -23,7 +23,7 @@ export type Urgency = S["Urgency"];
 
 // Vite only exposes env vars prefixed with VITE_.
 export const API_BASE: string =
-  import.meta.env.VITE_API_BASE ?? "http://localhost:8000/api/v1";
+  import.meta.env.VITE_API_BASE ?? (import.meta.env.PROD ? "/api/v1" : "http://localhost:8000/api/v1");
 
 // ---------- Errors ----------
 

@@ -1,0 +1,9 @@
+{
+  "window_days": 30,
+  "timezone": "Asia/Kolkata",
+  "window_basis": "Prototype policy: 30 calendar days from first logged bank contact. RBI's 2026 FAQ describes 30 days or a longer applicable RBI/NPCI/card-network period, and separate grounds for an unsatisfactory reply. This simplified tracker does not determine legal eligibility; verify the applicable period and complaint receipt date before filing.",
+  "source_url": "https://old.rbi.org.in/commonman/english/scripts/faqs.aspx?id=3407",
+  "source_checked_on": "2026-10-25",
+  "verification_status": "Official FAQ search excerpt reviewed; full scheme blocked by RBI CAPTCHA. Full legal verification pending.",
+  "disclaimer": "FairHold+ organizes your records. It is not legal advice. Readiness reflects prototype rules, not a decision about legal eligibility."
+}

@@ -10,7 +10,9 @@
     "prebuild": "npm run api:types",
     "build": "tsc --noEmit && vite build",
     "typecheck": "tsc --noEmit",
-    "mock": "node mock/server.mjs"
+    "mock": "node mock/server.mjs",
+    "backend": "python -m uvicorn backend.app:create_app --factory --host 127.0.0.1 --port 8000",
+    "test:backend": "python -m pytest backend/tests -q"
   },
   "dependencies": {
     "lucide-react": "^0.468.0",
